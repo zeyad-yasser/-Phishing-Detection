@@ -1,0 +1,28 @@
+{
+  "name": "Phishing Email Detector",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_title": "",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "contextMenus",
+    "webRequest",
+    "webNavigation"
+  ],
+  "host_permissions": ["https://*/*"],
+  "oauth2": {
+    "client_id": "1002044179879-ks2au3qgorkp3v5fksgubtlbo976sjf7.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*", "http://gmail.com/*"],
+      "js": ["popup.js", "background.js"]
+    }
+  ]
+}
