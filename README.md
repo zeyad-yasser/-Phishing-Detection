@@ -36,7 +36,6 @@ This repository contains the dataset, source code and trained model(s) for the f
     - [ ] ... notebook for each model (Directory per model if more than one notebook)
     - [ ] Dataset Analysis   (e.g., datasetName_analysis.ipynb)
   - [ ] models (this should define classes/packages)
-    - [ ] Define Directories based on model nature (Extractive/Abstractive)
     - [ ] https://github.com/vis-nlp/UniChart/tree/main/model
     - [ ] Include FastAPI definition per module
     - [ ] TODO(mshetairy): Share class template
