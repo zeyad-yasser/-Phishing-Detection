@@ -39,6 +39,10 @@ This repository contains the dataset, source code and trained model(s) for the f
     - [ ] https://github.com/vis-nlp/UniChart/tree/main/model
     - [ ] Include FastAPI definition per module
     - [ ] TODO(mshetairy): Share class template
+  - [ ] data
+    - [ ] Nazario
+    - [ ] phishing emails
+    - [ ] spam emails
   - [ ] Application (this directory should include all the application details)
 
 ## Demos
