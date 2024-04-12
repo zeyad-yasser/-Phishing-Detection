@@ -19,6 +19,8 @@ function extractUrls() {
   }
 
   console.log("Extracted URLs:", urls);
+
+  return urls;
 }
 
 function extractHeader() {
@@ -74,16 +76,104 @@ function extractBodyAndAddress() {
 
   return body;
 }
+function checkURLsValidity(urls) {
+  urls.forEach((url) => {
+    try {
+      const parsedURL = new URL(url);
+      const hostname = parsedURL.hostname;
+      const subdomains = hostname.split(".").length - 2;
+
+      if (parsedURL.protocol !== "http:" && parsedURL.protocol !== "https:") {
+        console.error("Invalid URL:", url);
+        return;
+      }
+
+      console.log("Number of Subdomains:", subdomains);
+
+      fetch(
+        `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=<API_KEY>&domainName=${hostname}`
+      )
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.text(); // Read response as text
+        })
+        .then((data) => {
+          // Parse XML response to extract creation date
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(data, "text/xml");
+
+          const creationDateNode = xmlDoc.querySelector("createdDate");
+          if (!creationDateNode) {
+            throw new Error("Creation date not found in WHOIS data.");
+          }
+
+          const creationDate = new Date(creationDateNode.textContent);
+          const currentDate = new Date();
+          const ageInYears =
+            (currentDate - creationDate) / (1000 * 60 * 60 * 24 * 365);
+
+          console.log("Creation Date:",creationDate);
+          console.log("Domain Age (Years):", ageInYears.toFixed(2));
+
+          const tld = parsedURL.hostname.split(".").pop();
+          console.log("Top-Level Domain (TLD):", tld);
+        })
+        .catch((error) => {
+          console.error("Error fetching WHOIS data:", error);
+        });
+    } catch (error) {
+      console.error("Error parsing URL:", url);
+    }
+  });
+}
 
 
+async function promptGPT(body) {
+  try {
+    const response = await fetch(`https://api.openai.com/v1/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization:
+          "Bearer <API_KEY>",
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo-instruct",
+        prompt: `is this a phishing email? explain why or why not? never mind the dates\n${body}`,
+        max_tokens: 200,
+        temperature: 0.7,
+      }),
+    });
 
-setTimeout(() => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.choices || data.choices.length === 0 || !data.choices[0].text) {
+      throw new Error("Unexpected response format or empty response.");
+    }
+
+    console.log("GPT Response:", data.choices[0].text.trim());
+    return data.choices[0].text.trim();
+  } catch (error) {
+    console.error("Error in GPT request:", error);
+    return "";
+  }
+}
+
+setTimeout(async () => {
   clickShowMoreButton();
   extractHeader();
-  extractUrls();
   const extractedBody = extractBodyAndAddress();
-
+  const extractedURLs = extractUrls();
   if (extractedBody) {
+    const gptResponse = await promptGPT(extractedBody);
+    checkURLsValidity(extractedURLs);
+
     fetch("http://localhost:5000/predict", {
       method: "POST",
       mode: "cors",
@@ -98,11 +188,11 @@ setTimeout(() => {
         console.log(data);
 
         let div = document.createElement("div");
-        div.innerText = data.message;
+        div.innerText = data.message + "\n\n" + gptResponse;
         div.style.position = "fixed";
         div.style.top = "200px";
         div.style.right = "600px";
-        div.style.backgroundColor = data.output === 1 ? "#DC143C" : "#2E8B57";
+        div.style.backgroundColor = data.output === "Phishing" ? "#DC143C" : "#2E8B57";
         div.style.color = "#f4f4f4";
         div.style.padding = "10px";
         div.style.borderRadius = "5px";
