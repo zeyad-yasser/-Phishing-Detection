@@ -10,13 +10,10 @@ function clickShowMoreButton() {
   }
 }
 
-function extractUrls() {
-  const anchorTags = document.querySelectorAll("a");
-  const urls = [];
+function extractUrls(emailBody) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
 
-  for (const anchor of anchorTags) {
-    urls.push(anchor.href);
-  }
+  const urls = emailBody.match(urlRegex) || [];
 
   console.log("Extracted URLs:", urls);
 
@@ -70,12 +67,22 @@ function extractBodyAndAddress() {
   if (!bodyNodes) {
     bodyNodes = document.getElementById(":p3");
   }
-  let body = bodyNodes ? bodyNodes.innerText : "";
+
+  if (bodyNodes) {
+    const anchorTags = bodyNodes.getElementsByTagName("a");
+
+    for (const anchor of anchorTags) {
+      anchor.innerText = anchor.href;
+    }
+  }
+
+  const body = bodyNodes ? bodyNodes.innerText : "";
 
   console.log(body);
 
   return body;
 }
+
 function checkURLsValidity(urls) {
   urls.forEach((url) => {
     try {
@@ -90,6 +97,42 @@ function checkURLsValidity(urls) {
 
       console.log("Number of Subdomains:", subdomains);
 
+      fetch(`https://safebrowsing.googleapis.com/v4/threatMatches:find?key=<API_KEY>`, {
+        method: "POST",
+        body: JSON.stringify({
+          client: {
+            clientId: "karimgp",
+            clientVersion: "1.5.2"
+          },
+          threatInfo: {
+            threatTypes: ["MALWARE", "SOCIAL_ENGINEERING"],
+            platformTypes: ["ANY_PLATFORM"],
+            threatEntryTypes: ["URL"],
+            threatEntries: [{ url: url }],
+          },
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (data && data.matches && data.matches.length > 0) {
+            console.log("URL is malicious:", url);
+            console.log("Threat type:", data.matches[0].threatType);
+          } else {
+            console.log("URL is safe:", url);
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking URL with Google Safe Browsing API:", error);
+        });
+
       fetch(
         `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=<API_KEY>&domainName=${hostname}`
       )
@@ -97,10 +140,9 @@ function checkURLsValidity(urls) {
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-          return response.text(); // Read response as text
+          return response.text();
         })
         .then((data) => {
-          // Parse XML response to extract creation date
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(data, "text/xml");
 
@@ -114,7 +156,7 @@ function checkURLsValidity(urls) {
           const ageInYears =
             (currentDate - creationDate) / (1000 * 60 * 60 * 24 * 365);
 
-          console.log("Creation Date:",creationDate);
+          console.log("Creation Date:", creationDate);
           console.log("Domain Age (Years):", ageInYears.toFixed(2));
 
           const tld = parsedURL.hostname.split(".").pop();
@@ -142,8 +184,8 @@ async function promptGPT(body) {
       body: JSON.stringify({
         model: "gpt-3.5-turbo-instruct",
         prompt: `is this a phishing email? explain why or why not? never mind the dates\n${body}`,
-        max_tokens: 200,
-        temperature: 0.7,
+        max_tokens: 2000,
+        temperature: 1,
       }),
     });
 
@@ -169,7 +211,7 @@ setTimeout(async () => {
   clickShowMoreButton();
   extractHeader();
   const extractedBody = extractBodyAndAddress();
-  const extractedURLs = extractUrls();
+  const extractedURLs = extractUrls(extractedBody);
   if (extractedBody) {
     const gptResponse = await promptGPT(extractedBody);
     checkURLsValidity(extractedURLs);
@@ -192,7 +234,8 @@ setTimeout(async () => {
         div.style.position = "fixed";
         div.style.top = "200px";
         div.style.right = "600px";
-        div.style.backgroundColor = data.output === "Phishing" ? "#DC143C" : "#2E8B57";
+        div.style.backgroundColor =
+          data.output === "Phishing" ? "#DC143C" : "#2E8B57";
         div.style.color = "#f4f4f4";
         div.style.padding = "10px";
         div.style.borderRadius = "5px";
