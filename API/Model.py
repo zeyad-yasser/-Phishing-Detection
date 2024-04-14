@@ -10,7 +10,7 @@ class PhishingDetectionModel:
 
     def predict(self, email_body):
         email_body_preprocessed = np.array([str(email_body)])
-        prediction = "Phishing" if self.loaded_model.predict(email_body_preprocessed) > 0.5 else "Safe"
+        prediction = "Phishing" if self.loaded_model.predict(email_body_preprocessed) > 0.7 else "Safe"
         return prediction
 
 if __name__ == "__main__":
